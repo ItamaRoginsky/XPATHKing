@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm install *)",
+      "Bash(npx vitest *)",
+      "Bash(npm create *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(chromium-cli --help)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(npx playwright *)",
+      "Bash(node __TRACKED_VAR__/screenshot.mjs http://localhost:5173/ __TRACKED_VAR__/01-menu.png)",
+      "Bash(cp 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/screenshot.mjs' 'C:\\\\Users\\\\user\\\\OneDrive\\\\Desktop\\\\xpath-game\\\\screenshot.mjs')",
+      "Bash(node screenshot.mjs http://localhost:5173/ 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/01-menu.png')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/practice' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/02-practice.png')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/practice/session' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/03-round-intro.png' '[{\"type\":\"wait\",\"ms\":800}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/practice/session' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/04-playing.png' '[{\"type\":\"wait\",\"ms\":600},{\"type\":\"click\",\"selector\":\"body\"},{\"type\":\"wait\",\"ms\":400},{\"type\":\"click\",\"selector\":\".cm-content\"},{\"type\":\"type\",\"text\":\"//span[contains\\(@class,\"},{\"type\":\"wait\",\"ms\":300}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/practice/tutorial' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/08-tutorial-welcome.png' '[{\"type\":\"wait\",\"ms\":500}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/how-to-play' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/12-howto.png' '[{\"type\":\"wait\",\"ms\":400}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/settings' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/13-settings.png' '[{\"type\":\"wait\",\"ms\":400}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/stats' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/14-stats.png' '[{\"type\":\"wait\",\"ms\":400}]')",
+      "Bash(node screenshot.mjs 'http://localhost:5173/#/duel' 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-OneDrive-Desktop-xpath-game\\\\fd391c45-9b9a-4ca1-934e-3a33d89a4a2b\\\\scratchpad/15-duel.png' '[{\"type\":\"wait\",\"ms\":400}]')",
+      "Bash(node test-duel.mjs)",
+      "Bash(jobs -l)",
+      "Bash(curl -sf http://localhost:5173)",
+      "Bash(curl -sf http://localhost:4174/healthz)",
+      "Bash(npx tsx *)",
+      "Bash(tasklist)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 32080)"
+    ]
+  }
+}
