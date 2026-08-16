@@ -15,6 +15,10 @@ export function RoundIntro({ challenge, roundNumber, totalRounds, onStart }: Rou
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ignore OS key-repeat: if the player is still holding Enter/Space
+      // from submitting the previous round, this screen mounts mid-hold
+      // and must not treat the held key as a fresh "begin" press.
+      if (e.repeat) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onStart();

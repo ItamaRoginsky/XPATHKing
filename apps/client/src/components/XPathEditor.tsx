@@ -74,9 +74,17 @@ export function XPathEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // stopPropagation is essential here, not just tidiness: submitting
+    // correctly can synchronously mount the round-result screen's own
+    // global "Enter to continue" window listener while this same physical
+    // keydown is still mid-bubble. Without stopPropagation, that listener
+    // catches the tail of the very keystroke that just submitted, and the
+    // result screen is dismissed before the player ever sees it.
     const submitKeymap = keymap.of([
       {
         key: "Enter",
+        preventDefault: true,
+        stopPropagation: true,
         run: () => {
           onSubmitRef.current();
           return true;
@@ -84,6 +92,8 @@ export function XPathEditor({
       },
       {
         key: "Mod-Enter",
+        preventDefault: true,
+        stopPropagation: true,
         run: () => {
           onSubmitRef.current();
           return true;
@@ -91,6 +101,8 @@ export function XPathEditor({
       },
       {
         key: "Mod-h",
+        preventDefault: true,
+        stopPropagation: true,
         run: () => {
           onHintRef.current?.();
           return true;

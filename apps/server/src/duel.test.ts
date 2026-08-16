@@ -236,4 +236,90 @@ describe("1v1 duel over the real WebSocket protocol", () => {
 
     ws.close();
   });
+
+  it("ignores a duplicate correct submit from the same player — no double score", async () => {
+    server = await createGameServer({ port: 0 });
+    const hostWs = await connect(server.port);
+    const joinWs = await connect(server.port);
+
+    send(hostWs, {
+      type: "host-room",
+      playerName: "Alpha",
+      settings: { difficulty: "beginner", roundCount: 1, roundTimerSeconds: 20 },
+    });
+    const roomCreated = await nextMessageOfType(hostWs, "room-created");
+    send(joinWs, { type: "join-room", roomCode: roomCreated.roomCode, playerName: "Bravo" });
+    await nextMessageOfType(joinWs, "room-joined");
+
+    send(hostWs, { type: "ready" });
+    send(joinWs, { type: "ready" });
+
+    const roundStart = await nextMessageOfType(hostWs, "round-start", 12000);
+    const xpath = roundStart.challenge.referenceSolutions[0]!.xpath;
+
+    // Same player "double-clicks" submit: two correct submissions for the
+    // same round, back to back, before the opponent answers at all.
+    send(hostWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+    send(hostWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+    send(hostWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+
+    // Opponent times out (no submit) so the round finalizes on the timer;
+    // roundTimerSeconds is 20s in this room, so use a short-timer room
+    // instead — resend with join's own (also correct) submit to finalize
+    // quickly and inspect the host's recorded result.
+    send(joinWs, { type: "submit", xpath, timeTakenMs: 5000, hintsUsed: 0, failedAttempts: 0 });
+
+    const roundResult = await nextMessageOfType(hostWs, "round-result", 12000);
+    const hostResult = roundResult.result.results[roomCreated.you.id]!;
+    expect(hostResult.submission.correct).toBe(true);
+    // A single correct, fast, first solve at beginner difficulty: base
+    // 1000 + speed bonus + quality + first-solve bonus. If the duplicate
+    // submits were double-scored this would come out roughly 2-3x higher.
+    expect(hostResult.score.total).toBeLessThan(1000 + 350 + 350 + 100 + 1);
+
+    hostWs.close();
+    joinWs.close();
+  }, 20000);
+
+  it("awards the first-solve bonus to exactly one player when both submit back to back", async () => {
+    server = await createGameServer({ port: 0 });
+    const hostWs = await connect(server.port);
+    const joinWs = await connect(server.port);
+
+    send(hostWs, {
+      type: "host-room",
+      playerName: "Alpha",
+      settings: { difficulty: "beginner", roundCount: 1, roundTimerSeconds: 20 },
+    });
+    const roomCreated = await nextMessageOfType(hostWs, "room-created");
+    send(joinWs, { type: "join-room", roomCode: roomCreated.roomCode, playerName: "Bravo" });
+    const roomJoined = await nextMessageOfType(joinWs, "room-joined");
+
+    send(hostWs, { type: "ready" });
+    send(joinWs, { type: "ready" });
+
+    const roundStart = await nextMessageOfType(hostWs, "round-start", 12000);
+    const xpath = roundStart.challenge.referenceSolutions[0]!.xpath;
+
+    // Fire both submits with no artificial delay between them — as close
+    // to "simultaneous" as two separate sockets can get.
+    send(hostWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+    send(joinWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+
+    const roundResult = await nextMessageOfType(hostWs, "round-result", 12000);
+    const hostResult = roundResult.result.results[roomCreated.you.id]!;
+    const joinResult = roundResult.result.results[roomJoined.you.id]!;
+
+    expect(hostResult.submission.correct).toBe(true);
+    expect(joinResult.submission.correct).toBe(true);
+
+    const firstSolveBonuses = [hostResult.score.firstSolve, joinResult.score.firstSolve];
+    // Exactly one player gets the first-solve bonus — never both, never
+    // neither — regardless of near-simultaneous arrival.
+    expect(firstSolveBonuses.filter((b) => b > 0)).toHaveLength(1);
+    expect(firstSolveBonuses.filter((b) => b === 0)).toHaveLength(1);
+
+    hostWs.close();
+    joinWs.close();
+  }, 20000);
 });

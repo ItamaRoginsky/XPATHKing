@@ -15,6 +15,14 @@ const TIER_META: Record<QualityTier, { label: string; className: string }> = {
 export function RoundResult({ record, onContinue, isLastRound }: { record: RoundRecord; onContinue: () => void; isLastRound: boolean }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Ignore OS key-repeat: this screen mounts the instant a correct
+      // submit fires (itself an Enter keydown, which CodeMirror doesn't
+      // stop from bubbling). If the player is still physically holding
+      // Enter down, the next auto-repeat keydown must not be treated as a
+      // fresh "continue" press — otherwise holding Enter to submit silently
+      // skips the result screen and can cascade into auto-starting the
+      // next round.
+      if (e.repeat) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         onContinue();
