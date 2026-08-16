@@ -17,7 +17,13 @@ export function DomExplorer({ html, matchedIds, targetIds, isLocked, hoveredId, 
     isLocked && matchedIds.size === targetIds.size && matchedIds.size > 0 && [...matchedIds].every((id) => targetIds.has(id));
 
   return (
-    <div className="select-none overflow-auto px-3 py-3 font-mono text-[12.5px] leading-[1.65]">
+    <div
+      className="select-none overflow-auto px-3 py-3 font-mono text-[12.5px] leading-[1.65] [-webkit-touch-callout:none]"
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <ElementRow
         node={tree}
         depth={0}
@@ -82,7 +88,7 @@ function ElementRow({ node, depth, matchedIds, exactMatch, hoveredId, onHoverNod
         onMouseLeave={handleMouseLeave}
       >
         <TagOpen node={node} highlightClass={highlightClass} />
-        <span className="text-text-primary">{textChildren.map((t) => t.value).join("")}</span>
+        <span className="select-none text-text-primary">{textChildren.map((t) => t.value).join("")}</span>
         <TagClose tag={node.tag} />
       </div>
     );
@@ -124,7 +130,7 @@ function ElementRow({ node, depth, matchedIds, exactMatch, hoveredId, onHoverNod
 
 function TagOpen({ node, selfClose = false, highlightClass = "" }: { node: TreeElement; selfClose?: boolean; highlightClass?: string }) {
   return (
-    <span className={highlightClass}>
+    <span className={`select-none ${highlightClass}`}>
       <span className="text-text-tertiary">{"<"}</span>
       <span className="text-violet">{node.tag}</span>
       {node.attrs.map(([k, v]) => (
@@ -142,7 +148,7 @@ function TagOpen({ node, selfClose = false, highlightClass = "" }: { node: TreeE
 
 function TagClose({ tag, indentless = false }: { tag: string; indentless?: boolean }) {
   return (
-    <span className={indentless ? "" : "whitespace-pre"}>
+    <span className={`select-none ${indentless ? "" : "whitespace-pre"}`}>
       <span className="text-text-tertiary">{"</"}</span>
       <span className="text-violet">{tag}</span>
       <span className="text-text-tertiary">{">"}</span>
