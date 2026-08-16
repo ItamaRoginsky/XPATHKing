@@ -47,7 +47,7 @@ export function PracticeHome() {
             accent="cyan"
             onClick={() => go({ kind: "quick" })}
           />
-          <QuickCard title="SPEED RUN" subtitle="60 seconds, as many as you can" accent="amber" onClick={() => go({ kind: "speedrun" })} />
+          <QuickCard title="SPEED RUN" subtitle="No time limit — chain as many as you can" accent="amber" onClick={() => go({ kind: "speedrun" })} />
           <QuickCard title="BOSS DOM" subtitle="One hard target. No shortcuts." accent="red" onClick={() => go({ kind: "boss" })} />
         </div>
 

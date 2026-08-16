@@ -15,9 +15,8 @@ export interface RoundRecord {
 }
 
 export interface SessionMode {
-  /** Speed rush = one master countdown, auto-advance on every correct answer. */
+  /** Speed rush = untimed, auto-advance on every correct answer; player ends the run via endSession(). */
   kind: "standard" | "speedrun";
-  speedrunSeconds?: number;
   onNeedMoreChallenges?: () => Challenge[];
 }
 
@@ -41,8 +40,6 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
   const [records, setRecords] = useState<RoundRecord[]>([]);
   const [shake, setShake] = useState(0);
   const [scorePop, setScorePop] = useState<{ id: number; score: ScoreBreakdown } | null>(null);
-
-  const [speedrunRemaining, setSpeedrunRemaining] = useState(mode.speedrunSeconds ?? 60);
 
   const docRef = useRef<Document | null>(null);
   const roundStartRef = useRef<number>(0);
@@ -95,16 +92,6 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     roundStartRef.current = performance.now();
   }, []);
 
-  // countdown timer — standard practice rounds run with unlimited time, so
-  // only the speedrun's master countdown actually ticks.
-  useEffect(() => {
-    if (phase !== "playing" || mode.kind !== "speedrun") return;
-    const tick = setInterval(() => {
-      setSpeedrunRemaining((t) => Math.max(0, t - 0.1));
-    }, 100);
-    return () => clearInterval(tick);
-  }, [phase, mode.kind]);
-
   const finishRound = useCallback(
     (result: SubmissionResult, timedOut: boolean, submittedXPath: string) => {
       const doc = docRef.current;
@@ -145,12 +132,9 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
       onRoundComplete?.(record);
 
       if (mode.kind === "speedrun") {
-        // auto-advance immediately on correct; on timeout, end session
-        if (result.correct) {
-          advanceSpeedrun();
-        } else {
-          setPhase("result");
-        }
+        // untimed: keeps auto-advancing on every correct answer until the
+        // player ends the run themselves via endSession().
+        advanceSpeedrun();
       } else {
         setPhase("result");
       }
@@ -209,16 +193,14 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, queue.length, records, totalScore, mode.kind]);
 
-  // timeout handling — only the speedrun's master countdown can end a round;
-  // standard practice rounds have unlimited time and never time out.
-  useEffect(() => {
-    if (phase !== "playing" || mode.kind !== "speedrun") return;
-    if (speedrunRemaining <= 0) {
-      setPhase("complete");
-      onSessionComplete?.(records, totalScore);
-    }
+  // Speed run has no timer and never fails on a wrong answer (submit() just
+  // lets the player retry), so it has no natural end condition — the player
+  // ends it explicitly whenever they're done.
+  const endSession = useCallback(() => {
+    setPhase("complete");
+    onSessionComplete?.(records, totalScore);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [speedrunRemaining, phase]);
+  }, [records, totalScore]);
 
   return {
     current,
@@ -237,11 +219,12 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     scorePop,
     comboMultiplier,
     comboStreak,
-    timeRemaining: mode.kind === "speedrun" ? speedrunRemaining : Infinity,
+    timeRemaining: Infinity,
     onDocReady,
     startRound,
     submit,
     requestHint,
     advance,
+    endSession,
   };
 }

@@ -64,7 +64,6 @@ export function PracticeSession() {
     mode: isSpeedrun
       ? {
           kind: "speedrun",
-          speedrunSeconds: 60,
           onNeedMoreChallenges: () => {
             setSpeedrunBatch((b) => b + 1);
             return buildSpeedRunBatch(resolvedDifficulty, speedrunBatch * 8);
@@ -134,6 +133,14 @@ export function PracticeSession() {
           <motion.span key={session.totalScore} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="font-bold text-text-primary">
             {session.totalScore.toLocaleString()}
           </motion.span>
+          {isSpeedrun && session.phase === "playing" && (
+            <button
+              onClick={session.endSession}
+              className="ml-2 rounded-md border border-border-subtle px-2 py-1 font-mono text-xs text-text-tertiary hover:border-amber hover:text-amber"
+            >
+              END RUN
+            </button>
+          )}
         </div>
       </header>
 
