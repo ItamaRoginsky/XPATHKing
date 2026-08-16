@@ -69,6 +69,10 @@ export function SiteFrame({ html, matchedIds, targetIds, isLocked, onReady, onHo
       srcDoc={srcDoc}
       onLoad={handleLoad}
       sandbox="allow-same-origin"
+      // Its buttons/links are non-functional decoration (no allow-scripts),
+      // so letting Tab wander through a whole storefront's worth of them
+      // would strand a keyboard-only player between the editor and Submit.
+      tabIndex={-1}
       className="h-full w-full border-0 bg-[#0d1119]"
     />
   );

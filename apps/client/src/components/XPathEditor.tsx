@@ -155,10 +155,23 @@ export function XPathEditor({
     });
   }, [autocompleteEnabled]);
 
+  const wasDisabledRef = useRef(disabled);
   useEffect(() => {
-    viewRef.current?.dispatch({
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
       effects: editableCompartment.current.reconfigure(EditorView.editable.of(!disabled)),
     });
+    // CodeMirror drops browser focus back to <body> the moment it becomes
+    // non-editable, so re-focus it whenever a new round makes it editable
+    // again — otherwise a keyboard-only player's first keystrokes vanish.
+    if (wasDisabledRef.current && !disabled) {
+      // The editable-compartment DOM write above lands on the next paint,
+      // so focusing in the same tick still targets the (still non-editable)
+      // element and gets silently dropped — defer one frame.
+      requestAnimationFrame(() => view.focus());
+    }
+    wasDisabledRef.current = disabled;
   }, [disabled]);
 
   return <div ref={containerRef} className="min-h-[52px] w-full" />;

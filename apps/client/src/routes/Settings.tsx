@@ -119,6 +119,9 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
     <Row label={label}>
       <button
         onClick={() => onChange(!checked)}
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
         className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-cyan" : "bg-white/10"}`}
       >
         <span

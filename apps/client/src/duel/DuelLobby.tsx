@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button, Panel } from "../design/primitives";
 import type { useMultiplayerClient } from "../multiplayer/useMultiplayerClient";
@@ -20,8 +21,14 @@ export function DuelLobby({ mp, onLeave }: DuelLobbyProps) {
 
         {you?.isHost && (
           <>
-            <div className="mb-1 font-mono text-3xl font-bold tracking-[0.2em] text-cyan text-glow-cyan">{mp.roomCode ?? "····"}</div>
-            <div className="mb-5 font-mono text-xs text-text-tertiary">{mp.hostAddress ?? "resolving address…"}</div>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="font-mono text-3xl font-bold tracking-[0.2em] text-cyan text-glow-cyan">{mp.roomCode ?? "····"}</span>
+              {mp.roomCode && <CopyButton value={mp.roomCode} label="room code" />}
+            </div>
+            <div className="mb-5 flex items-center gap-1.5 font-mono text-xs text-text-tertiary">
+              <span>{mp.hostAddress ?? "resolving address…"}</span>
+              {mp.hostAddress && <CopyButton value={mp.hostAddress} label="address" />}
+            </div>
           </>
         )}
         {!you?.isHost && <div className="mb-5 font-mono text-xs text-text-tertiary">Connected to room {mp.roomCode}</div>}
@@ -56,6 +63,30 @@ export function DuelLobby({ mp, onLeave }: DuelLobbyProps) {
         </Button>
       </Panel>
     </motion.div>
+  );
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      onClick={copy}
+      aria-label={`Copy ${label}`}
+      className="rounded-md border border-border-subtle px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-text-tertiary transition-colors hover:border-border-strong hover:text-text-secondary"
+    >
+      {copied ? "COPIED" : "COPY"}
+    </button>
   );
 }
 
