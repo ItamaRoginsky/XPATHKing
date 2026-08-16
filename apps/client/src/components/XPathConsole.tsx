@@ -37,8 +37,9 @@ export function XPathConsole({
   shakeToken,
   disabled,
 }: XPathConsoleProps) {
-  const timePct = Math.max(0, Math.min(100, (timeRemaining / challenge.timeLimitSeconds) * 100));
-  const timeUrgent = timeRemaining <= 5;
+  const isUnlimited = !Number.isFinite(timeRemaining);
+  const timePct = isUnlimited ? 100 : Math.max(0, Math.min(100, (timeRemaining / challenge.timeLimitSeconds) * 100));
+  const timeUrgent = !isUnlimited && timeRemaining <= 5;
 
   return (
     <div className="flex h-full flex-col">
@@ -71,13 +72,13 @@ export function XPathConsole({
       <div className="border-b border-border-subtle px-4 py-2">
         <div className="mb-1.5 h-1 w-full overflow-hidden rounded-full bg-white/5">
           <motion.div
-            className={`h-full rounded-full ${timeUrgent ? "bg-red" : "bg-cyan"}`}
+            className={`h-full rounded-full ${isUnlimited ? "bg-text-tertiary/30" : timeUrgent ? "bg-red" : "bg-cyan"}`}
             animate={{ width: `${timePct}%` }}
             transition={{ duration: 0.1, ease: "linear" }}
           />
         </div>
         <div className="flex items-center justify-between font-mono text-xs text-text-tertiary">
-          <span className={timeUrgent ? "text-red font-bold" : ""}>{timeRemaining.toFixed(1)}s</span>
+          <span className={timeUrgent ? "text-red font-bold" : ""}>{isUnlimited ? "∞ UNLIMITED" : `${timeRemaining.toFixed(1)}s`}</span>
           <span>{challenge.difficulty.toUpperCase()}</span>
         </div>
       </div>

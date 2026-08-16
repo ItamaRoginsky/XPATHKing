@@ -130,18 +130,18 @@ export class Room {
     const challenge = generateChallenge({ seed, category, difficulty: this.settings.difficulty });
     this.currentChallenge = challenge;
     this.roundChallengeId = challenge.id;
-    this.roundDeadline = Date.now() + challenge.timeLimitSeconds * 1000;
+    this.roundDeadline = Date.now() + this.settings.roundTimerSeconds * 1000;
 
     this.broadcast({
       type: "round-start",
       roundNumber,
       totalRounds: this.settings.roundCount,
       challenge,
-      durationSeconds: challenge.timeLimitSeconds,
+      durationSeconds: this.settings.roundTimerSeconds,
     });
 
     if (this.roundTimer) clearTimeout(this.roundTimer);
-    this.roundTimer = setTimeout(() => this.finalizeRound(), challenge.timeLimitSeconds * 1000 + 50);
+    this.roundTimer = setTimeout(() => this.finalizeRound(), this.settings.roundTimerSeconds * 1000 + 50);
   }
 
   handleLiveState(playerId: string, matchCount: number, status: string) {
@@ -176,7 +176,7 @@ export class Room {
     const score = computeRoundScore({
       correct: true,
       timeTakenMs,
-      timeLimitSeconds: this.currentChallenge.timeLimitSeconds,
+      timeLimitSeconds: this.settings.roundTimerSeconds,
       qualityTier: submission.quality.tier,
       isFirstSolve,
       hintsUsed,
@@ -219,15 +219,15 @@ export class Room {
         };
         const score = computeRoundScore({
           correct: false,
-          timeTakenMs: challenge.timeLimitSeconds * 1000,
-          timeLimitSeconds: challenge.timeLimitSeconds,
+          timeTakenMs: this.settings.roundTimerSeconds * 1000,
+          timeLimitSeconds: this.settings.roundTimerSeconds,
           qualityTier: "fragile",
           isFirstSolve: false,
           hintsUsed: 0,
           failedAttempts: 0,
           comboMultiplier: 1,
         });
-        this.submissions.set(p.id, { submission: emptyResult, score, timeTakenMs: challenge.timeLimitSeconds * 1000 });
+        this.submissions.set(p.id, { submission: emptyResult, score, timeTakenMs: this.settings.roundTimerSeconds * 1000 });
       }
     }
 

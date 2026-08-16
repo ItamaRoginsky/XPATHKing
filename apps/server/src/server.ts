@@ -8,6 +8,7 @@ import type { ClientMessage } from "@xpath-arena/shared";
 import { Room } from "./room";
 import { generateRoomCode } from "./room-code";
 import { getLanAddress } from "./lan";
+import { startDiscovery, type DiscoveryService } from "./discovery";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CLIENT_DIST = path.resolve(__dirname, "../../client/dist");
@@ -37,11 +38,21 @@ export interface GameServerHandle {
  */
 export function createGameServer(opts: { port?: number; clientDist?: string } = {}): Promise<GameServerHandle> {
   const clientDist = opts.clientDist ?? DEFAULT_CLIENT_DIST;
+  let discoveryService: DiscoveryService | null = null;
 
   const httpServer = createServer(async (req, res) => {
     if (req.url === "/healthz") {
       res.writeHead(200, { "content-type": "text/plain" });
       res.end("ok");
+      return;
+    }
+
+    if (req.url?.startsWith("/discover")) {
+      const url = new URL(req.url, "http://localhost");
+      const code = url.searchParams.get("code")?.trim().toUpperCase() ?? "";
+      const match = code ? (discoveryService?.resolve(code) ?? null) : null;
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(match ? { found: true, hostIp: match.hostIp, port: match.port } : { found: false }));
       return;
     }
 
@@ -161,16 +172,17 @@ export function createGameServer(opts: { port?: number; clientDist?: string } = 
   return new Promise((resolve) => {
     httpServer.listen(opts.port ?? 4174, () => {
       const port = (httpServer.address() as { port: number }).port;
+      discoveryService = startDiscovery({ port, rooms });
       resolve({
         httpServer,
         port,
         lanAddress: getLanAddress(),
         rooms,
-        close: () =>
-          new Promise((res) => {
-            wss.close();
-            httpServer.close(() => res());
-          }),
+        close: async () => {
+          await discoveryService?.close();
+          wss.close();
+          await new Promise<void>((res) => httpServer.close(() => res()));
+        },
       });
     });
   });

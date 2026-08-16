@@ -10,15 +10,16 @@ import { DuelMatch } from "../duel/DuelMatch";
 
 const DIFFICULTIES: Difficulty[] = ["beginner", "intermediate", "advanced", "expert"];
 const ROUND_COUNTS = [3, 5, 7];
+const ROUND_TIMERS = [15, 30, 45, 60];
 
 export function DuelHome() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"select" | "host" | "join">("select");
   const [playerName, setPlayerName] = useState("");
   const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [hostAddress, setHostAddress] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>("intermediate");
   const [roundCount, setRoundCount] = useState(5);
+  const [roundTimerSeconds, setRoundTimerSeconds] = useState(30);
 
   const mp = useMultiplayerClient();
 
@@ -101,6 +102,8 @@ export function DuelHome() {
             setDifficulty={setDifficulty}
             roundCount={roundCount}
             setRoundCount={setRoundCount}
+            roundTimerSeconds={roundTimerSeconds}
+            setRoundTimerSeconds={setRoundTimerSeconds}
             onBack={() => {
               mp.disconnect();
               setMode("select");
@@ -112,20 +115,17 @@ export function DuelHome() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Panel className="px-5 py-6">
               <h2 className="mb-4 font-mono text-xs font-semibold tracking-widest text-text-tertiary">JOIN GAME</h2>
-              <label className="mb-1 block text-xs text-text-secondary">Host address</label>
-              <input
-                value={hostAddress}
-                onChange={(e) => setHostAddress(e.target.value)}
-                placeholder="192.168.1.24:4174"
-                className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-sm text-text-primary outline-none focus:border-cyan"
-              />
               <label className="mb-1 block text-xs text-text-secondary">Room code</label>
               <input
                 value={roomCodeInput}
                 onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase().slice(0, 4))}
                 placeholder="X7KP"
-                className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-sm uppercase text-text-primary outline-none focus:border-cyan"
+                autoFocus
+                className="mb-1 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 font-mono text-lg tracking-[0.2em] uppercase text-text-primary outline-none focus:border-cyan"
               />
+              <p className="mb-4 text-xs text-text-tertiary">
+                We'll find the host automatically over the local network — just enter the code they gave you.
+              </p>
               {mp.error && <p className="mb-3 text-xs text-red">{mp.error}</p>}
               <div className="flex gap-2">
                 <Button
@@ -139,10 +139,10 @@ export function DuelHome() {
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={!hostAddress || !roomCodeInput || mp.status === "connecting"}
-                  onClick={() => mp.join(hostAddress, playerName || "Player", roomCodeInput)}
+                  disabled={!roomCodeInput || mp.status === "connecting"}
+                  onClick={() => mp.join(playerName || "Player", roomCodeInput)}
                 >
-                  {mp.status === "connecting" ? "Connecting…" : "Connect"}
+                  {mp.status === "connecting" ? "Searching…" : "Connect"}
                 </Button>
               </div>
             </Panel>
@@ -153,8 +153,8 @@ export function DuelHome() {
           <Panel className="mt-6 px-5 py-4">
             <p className="text-xs leading-relaxed text-text-tertiary">
               1v1 duels run over a small local server — no account and no internet connection required. Host from one
-              computer, then connect from another device on the same Wi-Fi/LAN using the address and room code shown
-              after hosting.
+              computer, then connect from another device on the same Wi-Fi/LAN with just the room code shown after
+              hosting — the app finds the host for you.
             </p>
           </Panel>
         )}
@@ -170,6 +170,8 @@ function HostPanel({
   setDifficulty,
   roundCount,
   setRoundCount,
+  roundTimerSeconds,
+  setRoundTimerSeconds,
   onBack,
 }: {
   playerName: string;
@@ -178,6 +180,8 @@ function HostPanel({
   setDifficulty: (d: Difficulty) => void;
   roundCount: number;
   setRoundCount: (n: number) => void;
+  roundTimerSeconds: number;
+  setRoundTimerSeconds: (n: number) => void;
   onBack: () => void;
 }) {
   return (
@@ -210,6 +214,17 @@ function HostPanel({
           </div>
         </div>
 
+        <div className="mb-4">
+          <div className="mb-1.5 text-xs text-text-secondary">Seconds per round</div>
+          <div className="flex flex-wrap gap-1.5">
+            {ROUND_TIMERS.map((n) => (
+              <button key={n} onClick={() => setRoundTimerSeconds(n)}>
+                <Tag tone={n === roundTimerSeconds ? "cyan" : "neutral"}>{n}s</Tag>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {mp.error && <p className="mb-3 text-xs text-red">{mp.error}</p>}
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onBack}>
@@ -218,7 +233,7 @@ function HostPanel({
           <Button
             variant="primary"
             disabled={mp.status === "connecting"}
-            onClick={() => mp.host(playerName, { difficulty, roundCount, roundTimerSeconds: 30 })}
+            onClick={() => mp.host(playerName, { difficulty, roundCount, roundTimerSeconds })}
           >
             {mp.status === "connecting" ? "Creating…" : "Create Room"}
           </Button>

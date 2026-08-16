@@ -42,7 +42,6 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
   const [shake, setShake] = useState(0);
   const [scorePop, setScorePop] = useState<{ id: number; score: ScoreBreakdown } | null>(null);
 
-  const [timeRemaining, setTimeRemaining] = useState(() => queue[0]?.timeLimitSeconds ?? 30);
   const [speedrunRemaining, setSpeedrunRemaining] = useState(mode.speedrunSeconds ?? 60);
 
   const docRef = useRef<Document | null>(null);
@@ -94,18 +93,14 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     setHintLevel(0);
     setFailedAttempts(0);
     roundStartRef.current = performance.now();
-    if (current) setTimeRemaining(current.timeLimitSeconds);
-  }, [current]);
+  }, []);
 
-  // countdown timer
+  // countdown timer — standard practice rounds run with unlimited time, so
+  // only the speedrun's master countdown actually ticks.
   useEffect(() => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || mode.kind !== "speedrun") return;
     const tick = setInterval(() => {
-      if (mode.kind === "speedrun") {
-        setSpeedrunRemaining((t) => Math.max(0, t - 0.1));
-      } else {
-        setTimeRemaining((t) => Math.max(0, t - 0.1));
-      }
+      setSpeedrunRemaining((t) => Math.max(0, t - 0.1));
     }, 100);
     return () => clearInterval(tick);
   }, [phase, mode.kind]);
@@ -214,21 +209,16 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, queue.length, records, totalScore, mode.kind]);
 
-  // timeout handling
+  // timeout handling — only the speedrun's master countdown can end a round;
+  // standard practice rounds have unlimited time and never time out.
   useEffect(() => {
-    if (phase !== "playing") return;
-    const remaining = mode.kind === "speedrun" ? speedrunRemaining : timeRemaining;
-    if (remaining <= 0) {
-      if (mode.kind === "speedrun") {
-        setPhase("complete");
-        onSessionComplete?.(records, totalScore);
-      } else if (docRef.current && current) {
-        const emptyResult = gradeSubmission(docRef.current, docRef.current, xpath || "//__timeout__", current);
-        finishRound({ ...emptyResult, correct: false }, true, xpath);
-      }
+    if (phase !== "playing" || mode.kind !== "speedrun") return;
+    if (speedrunRemaining <= 0) {
+      setPhase("complete");
+      onSessionComplete?.(records, totalScore);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRemaining, speedrunRemaining, phase]);
+  }, [speedrunRemaining, phase]);
 
   return {
     current,
@@ -247,7 +237,7 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     scorePop,
     comboMultiplier,
     comboStreak,
-    timeRemaining: mode.kind === "speedrun" ? speedrunRemaining : timeRemaining,
+    timeRemaining: mode.kind === "speedrun" ? speedrunRemaining : Infinity,
     onDocReady,
     startRound,
     submit,

@@ -14,6 +14,25 @@ function resolveDefaultWsUrl(): string {
   return `${wsProtocol}//${window.location.host}/ws`;
 }
 
+// Mirrors resolveDefaultWsUrl but for the plain HTTP `/discover` lookup —
+// every game server instance (this one included, if it's also hosting)
+// listens for LAN room-code broadcasts, so this is always "my own local
+// server" regardless of which machine ends up hosting the match.
+function resolveDiscoveryHttpBase(): string {
+  const { hostname, protocol } = window.location;
+  if (import.meta.env.DEV) return `${protocol}//${hostname}:4174`;
+  return `${protocol}//${window.location.host}`;
+}
+
+interface DiscoverResponse {
+  found: boolean;
+  hostIp?: string;
+  port?: number;
+}
+
+const DISCOVERY_MAX_ATTEMPTS = 6;
+const DISCOVERY_RETRY_MS = 1000;
+
 interface MultiplayerState {
   status: MultiplayerStatus;
   roomCode: string | null;
@@ -43,6 +62,10 @@ export function useMultiplayerClient() {
   // plain ref guard (checked synchronously) is what actually prevents a
   // second socket/second host-room from ever being created.
   const connectingRef = useRef(false);
+  // Bumped on every disconnect/new join attempt so an in-flight discovery
+  // retry loop from a since-abandoned join can recognize it's stale and
+  // stop touching state instead of clobbering whatever came after it.
+  const joinGenerationRef = useRef(0);
 
   const connect = useCallback((url: string, onOpen: (send: (msg: ClientMessage) => void) => void) => {
     if (connectingRef.current) return;
@@ -130,11 +153,48 @@ export function useMultiplayerClient() {
   );
 
   const join = useCallback(
-    (address: string, playerName: string, roomCode: string) => {
+    (playerName: string, roomCode: string) => {
       if (connectingRef.current || (socketRef.current && socketRef.current.readyState === WebSocket.OPEN)) return;
-      const trimmed = address.trim();
-      const url = trimmed.startsWith("ws://") || trimmed.startsWith("wss://") ? trimmed : `ws://${trimmed}/ws`;
-      connect(url, (send) => send({ type: "join-room", roomCode: roomCode.toUpperCase(), playerName }));
+      const code = roomCode.trim().toUpperCase();
+      if (!code) return;
+
+      connectingRef.current = true;
+      const generation = ++joinGenerationRef.current;
+      setState((s) => ({ ...IDLE_STATE, status: "connecting", players: s.players }));
+
+      const attempt = async (attemptNumber: number) => {
+        if (generation !== joinGenerationRef.current) return; // superseded by a disconnect or a newer join
+
+        let result: DiscoverResponse | null = null;
+        try {
+          const resp = await fetch(`${resolveDiscoveryHttpBase()}/discover?code=${encodeURIComponent(code)}`);
+          result = (await resp.json()) as DiscoverResponse;
+        } catch {
+          // LAN hiccup while searching — treated the same as "not found yet", just retry
+        }
+
+        if (generation !== joinGenerationRef.current) return;
+
+        if (result?.found && result.hostIp && result.port) {
+          connectingRef.current = false; // let connect() re-arm its own guard
+          connect(`ws://${result.hostIp}:${result.port}/ws`, (send) => send({ type: "join-room", roomCode: code, playerName }));
+          return;
+        }
+
+        if (attemptNumber >= DISCOVERY_MAX_ATTEMPTS) {
+          connectingRef.current = false;
+          setState((s) => ({
+            ...s,
+            status: "error",
+            error: "Couldn't find that room on this network. Double-check the code with your opponent and make sure you're both on the same Wi-Fi/LAN.",
+          }));
+          return;
+        }
+
+        setTimeout(() => attempt(attemptNumber + 1), DISCOVERY_RETRY_MS);
+      };
+
+      attempt(1);
     },
     [connect],
   );
@@ -152,6 +212,7 @@ export function useMultiplayerClient() {
 
   const disconnect = useCallback(() => {
     connectingRef.current = false;
+    joinGenerationRef.current += 1;
     if (socketRef.current) {
       if (socketRef.current.readyState === WebSocket.OPEN) {
         try {
