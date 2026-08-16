@@ -17,7 +17,7 @@ export function DomExplorer({ html, matchedIds, targetIds, isLocked, hoveredId, 
     isLocked && matchedIds.size === targetIds.size && matchedIds.size > 0 && [...matchedIds].every((id) => targetIds.has(id));
 
   return (
-    <div className="select-none overflow-auto px-3 py-3 font-mono text-[12.5px] leading-[1.65]">
+    <div className="overflow-auto px-3 py-3 font-mono text-[12.5px] leading-[1.65]">
       <ElementRow
         node={tree}
         depth={0}
