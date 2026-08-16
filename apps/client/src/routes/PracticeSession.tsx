@@ -64,7 +64,6 @@ export function PracticeSession() {
     mode: isSpeedrun
       ? {
           kind: "speedrun",
-          speedrunSeconds: 60,
           onNeedMoreChallenges: () => {
             setSpeedrunBatch((b) => b + 1);
             return buildSpeedRunBatch(resolvedDifficulty, speedrunBatch * 8);
@@ -130,6 +129,14 @@ export function PracticeSession() {
           )}
         </div>
         <div className="flex items-center gap-3 font-mono text-sm">
+          {isSpeedrun && (
+            <button
+              onClick={session.endSession}
+              className="font-mono text-xs text-text-tertiary underline decoration-dotted underline-offset-4 hover:text-text-secondary"
+            >
+              END RUN
+            </button>
+          )}
           <span className="text-text-tertiary">SCORE</span>
           <motion.span key={session.totalScore} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="font-bold text-text-primary">
             {session.totalScore.toLocaleString()}
@@ -169,7 +176,6 @@ export function PracticeSession() {
               onSubmit={session.submit}
               evaluation={session.evaluation}
               isExactTarget={isExactTarget}
-              timeRemaining={session.timeRemaining}
               comboMultiplier={session.comboMultiplier}
               comboStreak={session.comboStreak}
               autocompleteEnabled={settings.autocomplete}

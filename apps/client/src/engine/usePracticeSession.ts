@@ -15,9 +15,8 @@ export interface RoundRecord {
 }
 
 export interface SessionMode {
-  /** Speed rush = one master countdown, auto-advance on every correct answer. */
+  /** Speed rush = untimed, auto-advance on every correct answer; player ends the run via endSession(). */
   kind: "standard" | "speedrun";
-  speedrunSeconds?: number;
   onNeedMoreChallenges?: () => Challenge[];
 }
 
@@ -41,9 +40,6 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
   const [records, setRecords] = useState<RoundRecord[]>([]);
   const [shake, setShake] = useState(0);
   const [scorePop, setScorePop] = useState<{ id: number; score: ScoreBreakdown } | null>(null);
-
-  const [timeRemaining, setTimeRemaining] = useState(() => queue[0]?.timeLimitSeconds ?? 30);
-  const [speedrunRemaining, setSpeedrunRemaining] = useState(mode.speedrunSeconds ?? 60);
 
   const docRef = useRef<Document | null>(null);
   const roundStartRef = useRef<number>(0);
@@ -94,21 +90,7 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     setHintLevel(0);
     setFailedAttempts(0);
     roundStartRef.current = performance.now();
-    if (current) setTimeRemaining(current.timeLimitSeconds);
-  }, [current]);
-
-  // countdown timer
-  useEffect(() => {
-    if (phase !== "playing") return;
-    const tick = setInterval(() => {
-      if (mode.kind === "speedrun") {
-        setSpeedrunRemaining((t) => Math.max(0, t - 0.1));
-      } else {
-        setTimeRemaining((t) => Math.max(0, t - 0.1));
-      }
-    }, 100);
-    return () => clearInterval(tick);
-  }, [phase, mode.kind]);
+  }, []);
 
   const finishRound = useCallback(
     (result: SubmissionResult, timedOut: boolean, submittedXPath: string) => {
@@ -150,12 +132,9 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
       onRoundComplete?.(record);
 
       if (mode.kind === "speedrun") {
-        // auto-advance immediately on correct; on timeout, end session
-        if (result.correct) {
-          advanceSpeedrun();
-        } else {
-          setPhase("result");
-        }
+        // untimed: keeps auto-advancing on every correct answer until the
+        // player ends the run themselves via endSession().
+        advanceSpeedrun();
       } else {
         setPhase("result");
       }
@@ -214,21 +193,14 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, queue.length, records, totalScore, mode.kind]);
 
-  // timeout handling
-  useEffect(() => {
-    if (phase !== "playing") return;
-    const remaining = mode.kind === "speedrun" ? speedrunRemaining : timeRemaining;
-    if (remaining <= 0) {
-      if (mode.kind === "speedrun") {
-        setPhase("complete");
-        onSessionComplete?.(records, totalScore);
-      } else if (docRef.current && current) {
-        const emptyResult = gradeSubmission(docRef.current, docRef.current, xpath || "//__timeout__", current);
-        finishRound({ ...emptyResult, correct: false }, true, xpath);
-      }
-    }
+  // Speed run has no timer and never fails on a wrong answer (submit() just
+  // lets the player retry), so it has no natural end condition — the player
+  // ends it explicitly whenever they're done.
+  const endSession = useCallback(() => {
+    setPhase("complete");
+    onSessionComplete?.(records, totalScore);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRemaining, speedrunRemaining, phase]);
+  }, [records, totalScore]);
 
   return {
     current,
@@ -247,11 +219,11 @@ export function usePracticeSession({ challenges, mode, onSessionComplete, onRoun
     scorePop,
     comboMultiplier,
     comboStreak,
-    timeRemaining: mode.kind === "speedrun" ? speedrunRemaining : timeRemaining,
     onDocReady,
     startRound,
     submit,
     requestHint,
     advance,
+    endSession,
   };
 }
