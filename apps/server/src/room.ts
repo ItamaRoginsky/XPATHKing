@@ -38,6 +38,8 @@ export class Room {
   private roundTimer: NodeJS.Timeout | null = null;
   private advanceTimer: NodeJS.Timeout | null = null;
   private currentChallenge: ReturnType<typeof generateChallenge> | null = null;
+  private matchComplete = false;
+  private rematchVotes = new Set<string>();
 
   onEmpty: (() => void) | null = null;
 
@@ -60,7 +62,7 @@ export class Room {
   }
 
   get publicPlayers(): Player[] {
-    return this.players.map((p) => ({ id: p.id, name: p.name, isHost: p.isHost }));
+    return this.players.filter((p) => p.connected).map((p) => ({ id: p.id, name: p.name, isHost: p.isHost, ready: p.ready }));
   }
 
   broadcast(msg: ServerMessage, exceptId?: string) {
@@ -83,15 +85,39 @@ export class Room {
     const player = this.players.find((p) => p.id === playerId);
     if (!player) return;
     player.ready = true;
-    if (this.players.length === 2 && this.players.every((p) => p.ready) && !this.matchSeed) {
+    this.broadcast({ type: "player-list", players: this.publicPlayers });
+    if (this.players.filter((p) => p.connected).length === 2 && this.players.every((p) => !p.connected || p.ready) && !this.matchSeed) {
       this.startMatch();
     }
   }
 
   private startMatch() {
+    this.matchComplete = false;
     this.matchSeed = `duel-${this.code}-${Date.now()}`;
     this.broadcast({ type: "match-starting", seed: this.matchSeed, countdownMs: MATCH_START_COUNTDOWN_MS });
     setTimeout(() => this.startRound(1), MATCH_START_COUNTDOWN_MS);
+  }
+
+  handleRematchVote(playerId: string) {
+    if (!this.matchComplete) return;
+    const player = this.players.find((p) => p.id === playerId && p.connected);
+    if (!player) return;
+    this.rematchVotes.add(playerId);
+
+    const connectedIds = this.players.filter((p) => p.connected).map((p) => p.id);
+    if (connectedIds.length === 2 && connectedIds.every((id) => this.rematchVotes.has(id))) {
+      this.rematchVotes.clear();
+      this.roundResults = [];
+      this.submissions.clear();
+      this.comboTrackers.clear();
+      this.totalScores.clear();
+      this.currentRound = 0;
+      this.currentChallenge = null;
+      this.roundChallengeId = null;
+      for (const p of this.players) p.ready = false;
+      this.broadcast({ type: "rematch-starting" });
+      this.startMatch();
+    }
   }
 
   private startRound(roundNumber: number) {
@@ -228,6 +254,7 @@ export class Room {
     if (this.advanceTimer) clearTimeout(this.advanceTimer);
     if (this.currentRound >= this.settings.roundCount) {
       this.advanceTimer = setTimeout(() => {
+        this.matchComplete = true;
         this.broadcast({ type: "match-complete", rounds: this.roundResults });
       }, ROUND_RESULT_DISPLAY_MS);
     } else {
@@ -240,6 +267,7 @@ export class Room {
     if (!player) return;
     player.connected = false;
     this.broadcast({ type: "opponent-disconnected" }, player.id);
+    if (!this.matchSeed) this.broadcast({ type: "player-list", players: this.publicPlayers }, player.id);
 
     if (this.players.every((p) => !p.connected)) {
       if (this.roundTimer) clearTimeout(this.roundTimer);

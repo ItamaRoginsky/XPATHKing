@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc --noEmit -p apps/client/tsconfig.app.json && tsc --noEmit -p apps/server/tsconfig.json"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

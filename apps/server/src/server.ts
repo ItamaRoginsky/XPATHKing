@@ -137,6 +137,9 @@ export function createGameServer(opts: { port?: number; clientDist?: string } = 
         case "submit":
           room.handleSubmit(playerId, msg.xpath, msg.timeTakenMs, msg.hintsUsed, msg.failedAttempts);
           break;
+        case "rematch-vote":
+          room.handleRematchVote(playerId);
+          break;
         case "leave":
           room.handleDisconnect(ws);
           socketRoom.delete(ws);

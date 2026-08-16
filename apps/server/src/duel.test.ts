@@ -161,6 +161,71 @@ describe("1v1 duel over the real WebSocket protocol", () => {
     hostWs.close();
   });
 
+  it("frees a room slot when a player disconnects before the match starts, and does not report full with only one connected player", async () => {
+    server = await createGameServer({ port: 0 });
+
+    const hostWs = await connect(server.port);
+    send(hostWs, {
+      type: "host-room",
+      playerName: "Alpha",
+      settings: { difficulty: "beginner", roundCount: 1, roundTimerSeconds: 20 },
+    });
+    const roomCreated = await nextMessageOfType(hostWs, "room-created");
+
+    // First joiner connects, then leaves before a match ever starts.
+    const flakyWs = await connect(server.port);
+    send(flakyWs, { type: "join-room", roomCode: roomCreated.roomCode, playerName: "Flaky" });
+    await nextMessageOfType(flakyWs, "room-joined");
+    flakyWs.close();
+    await new Promise((r) => setTimeout(r, 100));
+
+    // A real second player should be able to take the now-empty slot —
+    // this is the exact "room already full" false-positive scenario.
+    const joinWs = await connect(server.port);
+    send(joinWs, { type: "join-room", roomCode: roomCreated.roomCode, playerName: "Bravo" });
+    const roomJoined = await nextMessageOfType(joinWs, "room-joined");
+    expect(roomJoined.players.filter((p) => p.name === "Bravo")).toHaveLength(1);
+
+    hostWs.close();
+    joinWs.close();
+  });
+
+  it("supports a rematch after match-complete, replaying a fresh match in the same room", async () => {
+    server = await createGameServer({ port: 0 });
+
+    const hostWs = await connect(server.port);
+    const joinWs = await connect(server.port);
+
+    send(hostWs, {
+      type: "host-room",
+      playerName: "Alpha",
+      settings: { difficulty: "beginner", roundCount: 1, roundTimerSeconds: 20 },
+    });
+    const roomCreated = await nextMessageOfType(hostWs, "room-created");
+    send(joinWs, { type: "join-room", roomCode: roomCreated.roomCode, playerName: "Bravo" });
+    await nextMessageOfType(joinWs, "room-joined");
+
+    send(hostWs, { type: "ready" });
+    send(joinWs, { type: "ready" });
+
+    const firstRound = await nextMessageOfType(hostWs, "round-start", 12000);
+    const xpath = firstRound.challenge.referenceSolutions[0]!.xpath;
+    send(hostWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+    send(joinWs, { type: "submit", xpath, timeTakenMs: 100, hintsUsed: 0, failedAttempts: 0 });
+
+    await nextMessageOfType(hostWs, "match-complete", 12000);
+
+    send(hostWs, { type: "rematch-vote" });
+    send(joinWs, { type: "rematch-vote" });
+
+    await nextMessageOfType(hostWs, "rematch-starting");
+    const secondRound = await nextMessageOfType(hostWs, "round-start", 12000);
+    expect(secondRound.roundNumber).toBe(1);
+
+    hostWs.close();
+    joinWs.close();
+  }, 20000);
+
   it("rejects joining a room that does not exist", async () => {
     server = await createGameServer({ port: 0 });
     const ws = await connect(server.port);
